@@ -76,7 +76,8 @@
                 <i class="fa-solid fa-file-audio text-2xl text-gray-400 mb-2" id="file-icon"></i>
                 <p class="text-sm text-gray-300 font-semibold" id="file-name">Tap to Load Stereo Tape (MP3/WAV)</p>
             </div>
-            <input type="file" id="audio-file" class="hidden" accept="audio/*" />
+            <!-- FIXED FOR iOS: Explicitly added .wav, .mp3, .m4a, .flac to force the Files app to un-grey them -->
+            <input type="file" id="audio-file" class="hidden" accept="audio/*,.wav,.mp3,.m4a,.flac,audio/wav,audio/mpeg" />
         </label>
 
         <!-- Progress Bar -->
