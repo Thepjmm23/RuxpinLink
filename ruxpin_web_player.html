@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ruxpin Link - Bluetooth Tape Player</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            overscroll-behavior-y: none; /* Prevents pull-to-refresh on mobile */
+        }
+        .slider-custom {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #333;
+            outline: none;
+        }
+        .slider-custom::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #007ACC;
+            cursor: pointer;
+        }
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #68D391;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #68D391;
+        }
+        #oscilloscope {
+            width: 100%;
+            height: 120px;
+            background-color: #000;
+            border-radius: 0.5rem;
+            border: 1px solid #333;
+        }
+        /* Custom message box to replace alerts */
+        #messageBox {
+            transition: opacity 0.3s ease;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 sm:p-6 pb-20">
+
+    <!-- App Header -->
+    <div class="w-full max-w-md flex items-center justify-center space-x-3 mb-6 mt-4">
+        <i class="fa-solid fa-tape text-3xl text-yellow-500"></i>
+        <h1 class="text-2xl font-extrabold text-white tracking-tight">RUXPIN <span class="text-blue-500">LINK</span></h1>
+    </div>
+
+    <!-- Instruction Panel -->
+    <div class="w-full max-w-md bg-blue-900 bg-opacity-30 border border-blue-800 rounded-xl p-4 mb-6 shadow-lg">
+        <h2 class="text-sm font-bold text-blue-300 mb-2"><i class="fa-solid fa-circle-info mr-1"></i> IPHONE BLUETOOTH FIX</h2>
+        <p class="text-xs text-blue-100 leading-relaxed">
+            To stop stuttering, turn your physical phone volume to <b>MAX (100%)</b>. Then, use the <b>Story Volume</b> slider below to lower the voice. This ensures the data track remains at full strength for the servos while the audio is quiet.
+        </p>
+    </div>
+
+    <!-- Main Player Card -->
+    <div class="w-full max-w-md bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl p-5 mb-6">
+        
+        <!-- File Loader -->
+        <label class="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-600 border-dashed rounded-xl cursor-pointer hover:bg-gray-800 transition mb-4">
+            <div class="flex flex-col items-center justify-center pt-5 pb-6" id="drop-zone">
+                <i class="fa-solid fa-file-audio text-2xl text-gray-400 mb-2" id="file-icon"></i>
+                <p class="text-sm text-gray-300 font-semibold" id="file-name">Tap to Load Stereo Tape (MP3/WAV)</p>
+            </div>
+            <input type="file" id="audio-file" class="hidden" accept="audio/*" />
+        </label>
+
+        <!-- Progress Bar -->
+        <div class="mb-5 pointer-events-none opacity-50" id="progress-container">
+            <div class="flex justify-between text-xs text-gray-400 mb-1 font-mono">
+                <span id="time-current">00:00</span>
+                <span id="time-total">00:00</span>
+            </div>
+            <input type="range" id="seek-slider" class="slider-custom" value="0" min="0" max="100" step="0.1">
+        </div>
+
+        <!-- Transport Controls -->
+        <div class="flex justify-center items-center space-x-6 mb-6 opacity-50 pointer-events-none" id="transport-controls">
+            <button id="btn-stop" class="w-12 h-12 rounded-full bg-gray-700 hover:bg-gray-600 text-white flex items-center justify-center transition shadow-lg">
+                <i class="fa-solid fa-stop"></i>
+            </button>
+            <button id="btn-play" class="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center transition shadow-lg shadow-blue-900/50">
+                <i class="fa-solid fa-play text-xl ml-1"></i>
+            </button>
+            <button id="btn-loop" class="w-12 h-12 rounded-full bg-gray-700 hover:bg-gray-600 text-white flex items-center justify-center transition shadow-lg">
+                <i class="fa-solid fa-repeat"></i>
+            </button>
+        </div>
+
+        <hr class="border-gray-700 mb-5">
+
+        <!-- Channel Mixer -->
+        <div class="space-y-5">
+            <!-- Story Volume -->
+            <div>
+                <div class="flex justify-between text-sm mb-1">
+                    <span class="font-semibold text-white"><i class="fa-solid fa-volume-low text-blue-400 mr-2"></i>Story Volume (Left)</span>
+                    <span id="vol-story-val" class="text-blue-400 font-mono">100%</span>
+                </div>
+                <input type="range" id="vol-story" class="slider-custom" value="100" min="0" max="100">
+            </div>
+
+            <!-- Data Volume -->
+            <div>
+                <div class="flex justify-between text-sm mb-1">
+                    <span class="font-semibold text-white"><i class="fa-solid fa-bolt text-yellow-400 mr-2"></i>Animatronics Level (Right)</span>
+                    <span id="vol-data-val" class="text-yellow-400 font-mono">100%</span>
+                </div>
+                <input type="range" id="vol-data" class="slider-custom" value="100" min="0" max="150">
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Advanced Settings & Oscilloscope -->
+    <div class="w-full max-w-md bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl p-5">
+        <h3 class="text-sm font-bold text-gray-400 mb-4 uppercase tracking-wider">Advanced Telemetry</h3>
+        
+        <!-- Phase Invert Toggle -->
+        <div class="flex items-center justify-between mb-4">
+            <span class="text-sm text-gray-200">Invert Right Channel Phase<br><span class="text-xs text-gray-500">Fixes stuttering on cheap BT adapters</span></span>
+            <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                <input type="checkbox" name="toggle" id="phase-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out border-gray-400 top-0 left-0"/>
+                <label for="phase-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer transition-colors duration-200 ease-in-out"></label>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between mb-4">
+            <span class="text-sm text-gray-200">Swap Audio Channels<br><span class="text-xs text-gray-500">If tape was ripped backwards</span></span>
+            <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                <input type="checkbox" name="toggle" id="swap-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out border-gray-400 top-0 left-0"/>
+                <label for="swap-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-600 cursor-pointer transition-colors duration-200 ease-in-out"></label>
+            </div>
+        </div>
+
+        <!-- Oscilloscope -->
+        <span class="text-xs font-semibold text-gray-400 block mb-1">Right Channel PPM Oscilloscope</span>
+        <canvas id="oscilloscope"></canvas>
+    </div>
+
+    <!-- Custom UI Message Box (Replaces Alert) -->
+    <div id="messageBox" class="fixed inset-0 flex items-center justify-center z-50 pointer-events-none opacity-0">
+        <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+        <div class="bg-gray-800 border border-gray-600 rounded-xl p-6 shadow-2xl z-10 max-w-xs text-center transform scale-95 transition-transform" id="messageBoxContent">
+            <i class="fa-solid fa-triangle-exclamation text-4xl text-yellow-500 mb-4" id="messageIcon"></i>
+            <h3 class="text-lg font-bold text-white mb-2" id="messageTitle">Notice</h3>
+            <p class="text-sm text-gray-300 mb-6" id="messageText">Message goes here.</p>
+            <button id="messageBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-lg pointer-events-auto">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // Custom Message Box Function
+        function showMessage(title, text, isError = false) {
+            const box = document.getElementById('messageBox');
+            const boxContent = document.getElementById('messageBoxContent');
+            document.getElementById('messageTitle').innerText = title;
+            document.getElementById('messageText').innerText = text;
+            
+            const icon = document.getElementById('messageIcon');
+            if (isError) {
+                icon.className = "fa-solid fa-circle-xmark text-4xl text-red-500 mb-4";
+            } else {
+                icon.className = "fa-solid fa-circle-check text-4xl text-green-500 mb-4";
+            }
+
+            box.classList.remove('opacity-0', 'pointer-events-none');
+            boxContent.classList.remove('scale-95');
+            boxContent.classList.add('scale-100');
+        }
+
+        document.getElementById('messageBtn').addEventListener('click', () => {
+            const box = document.getElementById('messageBox');
+            const boxContent = document.getElementById('messageBoxContent');
+            box.classList.add('opacity-0', 'pointer-events-none');
+            boxContent.classList.remove('scale-100');
+            boxContent.classList.add('scale-95');
+        });
+
+        // Web Audio API Global Variables
+        let audioContext;
+        let audioBuffer;
+        let sourceNode;
+        let splitter;
+        let merger;
+        let storyGain;
+        let dataGain;
+        let phaseInverter;
+        let analyser;
+        let animationId;
+        
+        let isPlaying = false;
+        let isLooping = false;
+        let startedAt = 0;
+        let pausedAt = 0;
+
+        // UI Elements
+        const fileInput = document.getElementById('audio-file');
+        const fileNameDisplay = document.getElementById('file-name');
+        const fileIcon = document.getElementById('file-icon');
+        const btnPlay = document.getElementById('btn-play');
+        const btnStop = document.getElementById('btn-stop');
+        const btnLoop = document.getElementById('btn-loop');
+        const sliderStory = document.getElementById('vol-story');
+        const sliderData = document.getElementById('vol-data');
+        const valStory = document.getElementById('vol-story-val');
+        const valData = document.getElementById('vol-data-val');
+        const chkPhase = document.getElementById('phase-toggle');
+        const chkSwap = document.getElementById('swap-toggle');
+        const seekSlider = document.getElementById('seek-slider');
+        const timeCurrent = document.getElementById('time-current');
+        const timeTotal = document.getElementById('time-total');
+        const controlsDiv = document.getElementById('transport-controls');
+        const progressDiv = document.getElementById('progress-container');
+        
+        // Canvas Setup
+        const canvas = document.getElementById('oscilloscope');
+        const canvasCtx = canvas.getContext('2d');
+        
+        function resizeCanvas() {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Initialize Audio Node Graph
+        function initAudio() {
+            if (audioContext) return;
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioContext = new AudioContext();
+
+            // Create nodes
+            splitter = audioContext.createChannelSplitter(2);
+            merger = audioContext.createChannelMerger(2);
+            storyGain = audioContext.createGain();
+            dataGain = audioContext.createGain();
+            phaseInverter = audioContext.createGain();
+            analyser = audioContext.createAnalyser();
+
+            // Set up analyzer for oscilloscope
+            analyser.fftSize = 2048;
+            analyser.smoothingTimeConstant = 0;
+
+            // Route audio: Source -> Splitter
+            // Splitter 0 (Left/Story) -> storyGain -> Merger 0 (Left)
+            // Splitter 1 (Right/Data) -> dataGain -> phaseInverter -> Analyser -> Merger 1 (Right)
+            updateRouting();
+
+            // Connect final output
+            merger.connect(audioContext.destination);
+
+            // Apply initial UI settings
+            storyGain.gain.value = sliderStory.value / 100;
+            dataGain.gain.value = sliderData.value / 100;
+            phaseInverter.gain.value = chkPhase.checked ? -1 : 1;
+        }
+
+        function updateRouting() {
+            if (!splitter) return;
+            
+            // Disconnect old routes
+            splitter.disconnect();
+            storyGain.disconnect();
+            dataGain.disconnect();
+            phaseInverter.disconnect();
+            analyser.disconnect();
+
+            let storyInput = chkSwap.checked ? 1 : 0;
+            let dataInput = chkSwap.checked ? 0 : 1;
+
+            // Connect Story Channel
+            splitter.connect(storyGain, storyInput);
+            storyGain.connect(merger, 0, 0);
+
+            // Connect Data Channel
+            splitter.connect(dataGain, dataInput);
+            dataGain.connect(phaseInverter);
+            phaseInverter.connect(analyser);
+            analyser.connect(merger, 0, 1);
+        }
+
+        // File Loading
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            fileNameDisplay.innerText = "Decoding audio...";
+            fileIcon.className = "fa-solid fa-spinner fa-spin text-2xl text-blue-400 mb-2";
+            
+            if (isPlaying) stopAudio();
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                initAudio();
+                const arrayBuffer = e.target.result;
+                
+                audioContext.decodeAudioData(arrayBuffer, function(buffer) {
+                    audioBuffer = buffer;
+                    fileNameDisplay.innerText = file.name;
+                    fileIcon.className = "fa-solid fa-compact-disc text-2xl text-green-400 mb-2";
+                    
+                    timeTotal.innerText = formatTime(buffer.duration);
+                    seekSlider.max = buffer.duration;
+                    
+                    // Enable UI
+                    controlsDiv.classList.remove('opacity-50', 'pointer-events-none');
+                    progressDiv.classList.remove('opacity-50', 'pointer-events-none');
+                    progressDiv.style.pointerEvents = 'auto'; // allow seeking
+                    
+                    pausedAt = 0;
+                    updateProgress();
+                    
+                    showMessage("Tape Loaded", "Audio successfully decoded and loaded. Turn iPhone volume to maximum before playing.", false);
+                }, function(err) {
+                    fileIcon.className = "fa-solid fa-triangle-exclamation text-2xl text-red-500 mb-2";
+                    fileNameDisplay.innerText = "Error decoding file.";
+                    showMessage("Error", "Could not decode audio file. Make sure it is a valid MP3 or WAV.", true);
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        // Play/Pause Control
+        btnPlay.addEventListener('click', () => {
+            if (!audioBuffer) return;
+            initAudio();
+
+            if (isPlaying) {
+                // Pause
+                audioContext.suspend();
+                pausedAt += audioContext.currentTime - startedAt;
+                isPlaying = false;
+                btnPlay.innerHTML = '<i class="fa-solid fa-play text-xl ml-1"></i>';
+                btnPlay.classList.replace('bg-orange-500', 'bg-blue-600');
+                btnPlay.classList.replace('hover:bg-orange-400', 'hover:bg-blue-500');
+            } else {
+                // Play
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                } else {
+                    playAudio(pausedAt);
+                }
+                isPlaying = true;
+                btnPlay.innerHTML = '<i class="fa-solid fa-pause text-xl"></i>';
+                btnPlay.classList.replace('bg-blue-600', 'bg-orange-500');
+                btnPlay.classList.replace('hover:bg-blue-500', 'hover:bg-orange-400');
+                drawOscilloscope();
+            }
+        });
+
+        btnStop.addEventListener('click', stopAudio);
+
+        btnLoop.addEventListener('click', () => {
+            isLooping = !isLooping;
+            if (isLooping) {
+                btnLoop.classList.replace('bg-gray-700', 'bg-blue-600');
+            } else {
+                btnLoop.classList.replace('bg-blue-600', 'bg-gray-700');
+            }
+            if (sourceNode) sourceNode.loop = isLooping;
+        });
+
+        function playAudio(offset) {
+            sourceNode = audioContext.createBufferSource();
+            sourceNode.buffer = audioBuffer;
+            sourceNode.loop = isLooping;
+            
+            sourceNode.connect(splitter);
+            
+            startedAt = audioContext.currentTime - offset;
+            sourceNode.start(0, offset);
+
+            sourceNode.onended = () => {
+                if (!isPlaying || isLooping) return;
+                stopAudio();
+            };
+        }
+
+        function stopAudio() {
+            if (sourceNode) {
+                sourceNode.onended = null;
+                sourceNode.stop();
+                sourceNode.disconnect();
+            }
+            isPlaying = false;
+            pausedAt = 0;
+            if(audioContext) startedAt = audioContext.currentTime;
+            
+            btnPlay.innerHTML = '<i class="fa-solid fa-play text-xl ml-1"></i>';
+            btnPlay.classList.replace('bg-orange-500', 'bg-blue-600');
+            btnPlay.classList.replace('hover:bg-orange-400', 'hover:bg-blue-500');
+            
+            seekSlider.value = 0;
+            timeCurrent.innerText = "00:00";
+            cancelAnimationFrame(animationId);
+            
+            // clear canvas
+            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(0, canvas.height/2);
+            canvasCtx.lineTo(canvas.width, canvas.height/2);
+            canvasCtx.strokeStyle = "#333";
+            canvasCtx.stroke();
+        }
+
+        // Seeking
+        seekSlider.addEventListener('input', (e) => {
+            if (!audioBuffer) return;
+            const seekTo = parseFloat(e.target.value);
+            timeCurrent.innerText = formatTime(seekTo);
+            pausedAt = seekTo;
+        });
+
+        seekSlider.addEventListener('change', (e) => {
+            if (!audioBuffer) return;
+            if (isPlaying) {
+                stopAudio();
+                playAudio(pausedAt);
+                isPlaying = true;
+                btnPlay.innerHTML = '<i class="fa-solid fa-pause text-xl"></i>';
+                btnPlay.classList.replace('bg-blue-600', 'bg-orange-500');
+            }
+        });
+
+        // Time updates
+        function updateProgress() {
+            if (isPlaying) {
+                let current = audioContext.currentTime - startedAt;
+                if (current > audioBuffer.duration && !isLooping) current = audioBuffer.duration;
+                if (current > audioBuffer.duration && isLooping) {
+                    current = current % audioBuffer.duration;
+                    startedAt = audioContext.currentTime - current; // reset start time for looping logic
+                }
+                
+                seekSlider.value = current;
+                timeCurrent.innerText = formatTime(current);
+            }
+            requestAnimationFrame(updateProgress);
+        }
+
+        // UI Listeners
+        sliderStory.addEventListener('input', (e) => {
+            valStory.innerText = e.target.value + "%";
+            if (storyGain) storyGain.gain.value = e.target.value / 100;
+        });
+
+        sliderData.addEventListener('input', (e) => {
+            valData.innerText = e.target.value + "%";
+            if (dataGain) dataGain.gain.value = e.target.value / 100;
+        });
+
+        chkPhase.addEventListener('change', (e) => {
+            if (phaseInverter) phaseInverter.gain.value = e.target.checked ? -1 : 1;
+        });
+
+        chkSwap.addEventListener('change', (e) => {
+            updateRouting();
+        });
+
+        // Utility: Format Seconds to MM:SS
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return "00:00";
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        // Oscilloscope Draw Loop
+        function drawOscilloscope() {
+            if (!isPlaying || !analyser) return;
+
+            animationId = requestAnimationFrame(drawOscilloscope);
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Float32Array(bufferLength);
+            analyser.getFloatTimeDomainData(dataArray);
+
+            canvasCtx.fillStyle = 'rgb(18, 18, 18)';
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw center line
+            canvasCtx.lineWidth = 1;
+            canvasCtx.strokeStyle = '#333';
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(0, canvas.height / 2);
+            canvasCtx.lineTo(canvas.width, canvas.height / 2);
+            canvasCtx.stroke();
+
+            canvasCtx.lineWidth = 2;
+            canvasCtx.strokeStyle = 'rgb(104, 211, 145)'; // Tailwind green-400
+            canvasCtx.beginPath();
+
+            const sliceWidth = canvas.width * 1.0 / bufferLength;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                const v = dataArray[i]; // -1.0 to 1.0
+                const y = (v * (canvas.height / 2)) + (canvas.height / 2);
+
+                if (i === 0) {
+                    canvasCtx.moveTo(x, y);
+                } else {
+                    canvasCtx.lineTo(x, y);
+                }
+                x += sliceWidth;
+            }
+
+            canvasCtx.stroke();
+        }
+
+        // Draw empty scope initially
+        resizeCanvas();
+        canvasCtx.beginPath();
+        canvasCtx.moveTo(0, canvas.height/2);
+        canvasCtx.lineTo(canvas.width, canvas.height/2);
+        canvasCtx.strokeStyle = "#333";
+        canvasCtx.stroke();
+    </script>
+</body>
+</html>
